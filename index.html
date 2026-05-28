@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WM Tippspiel · Rosenberger Finanzberatung</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --sand: #EAE4DA;
+      --stone: #999183;
+      --slate: #5C5A54;
+      --sand-light: #f7f4ef;
+      --sand-dark: #d4cdc0;
+      --text-dark: #2e2c28;
+      --white: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Jost', sans-serif; color: var(--text-dark); background: var(--sand-light); min-height: 100vh; }
+
+    /* HEADER */
+    .header { background: var(--slate); padding: 28px 28px 22px; position: relative; overflow: hidden; }
+    .header::before { content:''; position:absolute; top:-80px; right:-80px; width:240px; height:240px; border-radius:50%; border:1px solid rgba(234,228,218,0.08); }
+    .header-brand { font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--stone); margin-bottom:6px; }
+    .header h1 { font-family:'Cormorant Garamond',serif; font-size:32px; font-weight:300; color:var(--sand); line-height:1.1; }
+    .header h1 em { font-style:italic; opacity:0.7; }
+    .header-meta { font-size:12px; color:var(--stone); margin-top:8px; font-weight:300; letter-spacing:0.04em; }
+    .header-user { font-size:12px; color:var(--sand-dark); margin-top:6px; }
+
+    /* TABS */
+    .tabs { display:flex; background:var(--white); border-bottom:1px solid var(--sand-dark); padding:0 20px; overflow-x:auto; }
+    .tab { padding:14px 16px; font-size:12px; letter-spacing:0.12em; text-transform:uppercase; font-weight:500; color:var(--stone); cursor:pointer; border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none; white-space:nowrap; transition:all 0.2s; }
+    .tab.active { color:var(--slate); border-bottom-color:var(--slate); }
+
+    /* CONTENT */
+    .content { padding:24px 20px; max-width:700px; margin:0 auto; display:none; }
+    .content.active { display:block; }
+
+    .section-label { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--stone); margin-bottom:14px; }
+
+    /* CARDS */
+    .card { background:var(--white); border:1px solid var(--sand-dark); border-radius:4px; padding:20px; margin-bottom:12px; }
+    .card h3 { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:400; color:var(--slate); margin-bottom:10px; }
+    .card p { font-size:13px; color:var(--stone); font-weight:300; margin-bottom:12px; line-height:1.6; }
+
+    /* MATCH CARD */
+    .match-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .match-round { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--stone); }
+    .match-date { font-size:11px; color:var(--stone); font-weight:300; }
+    .match-teams { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; }
+    .team-name { font-size:14px; font-weight:500; color:var(--slate); }
+    .team-name.right { text-align:right; }
+    .vs-box { display:flex; gap:6px; align-items:center; }
+    .score-input { width:36px; height:36px; text-align:center; border:1px solid var(--sand-dark); border-radius:3px; font-family:'Cormorant Garamond',serif; font-size:20px; color:var(--slate); background:var(--sand-light); outline:none; -moz-appearance:textfield; }
+    .score-input::-webkit-outer-spin-button, .score-input::-webkit-inner-spin-button { -webkit-appearance:none; }
+    .score-input:focus { border-color:var(--slate); }
+    .score-sep { font-family:'Cormorant Garamond',serif; font-size:18px; color:var(--stone); }
+    .match-saved { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--stone); margin-top:8px; text-align:right; min-height:16px; }
+    .match-saved.ok { color:#5a8a5a; }
+    .match-deadline { font-size:11px; color:#c07a3a; margin-top:6px; text-align:right; }
+
+    /* RANGLISTE */
+    .ranking-row { display:grid; grid-template-columns:32px 1fr auto; align-items:center; gap:12px; padding:13px 16px; background:var(--white); border:1px solid var(--sand-dark); border-radius:4px; margin-bottom:8px; }
+    .ranking-row.you { background:var(--slate); border-color:var(--slate); }
+    .rank-num { font-family:'Cormorant Garamond',serif; font-size:20px; color:var(--stone); text-align:center; }
+    .ranking-row.you .rank-num { color:var(--sand); }
+    .rank-name { font-size:14px; font-weight:500; color:var(--slate); }
+    .ranking-row.you .rank-name { color:var(--sand); }
+    .rank-pts { font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--slate); font-weight:300; text-align:right; }
+    .ranking-row.you .rank-pts { color:var(--sand); }
+
+    /* FORM */
+    .form-row { margin-bottom:12px; }
+    .form-label { font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--stone); display:block; margin-bottom:5px; }
+    .form-input { width:100%; padding:9px 12px; border:1px solid var(--sand-dark); border-radius:3px; font-family:'Jost',sans-serif; font-size:14px; color:var(--slate); background:var(--sand-light); outline:none; transition:border-color 0.2s; }
+    .form-input:focus { border-color:var(--slate); }
+
+    /* BUTTONS */
+    .btn-primary { padding:10px 22px; background:var(--slate); color:var(--sand); border:none; border-radius:3px; font-family:'Jost',sans-serif; font-size:12px; letter-spacing:0.08em; font-weight:500; cursor:pointer; transition:opacity 0.2s; }
+    .btn-primary:hover { opacity:0.85; }
+    .btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-secondary { padding:10px 22px; background:transparent; color:var(--slate); border:1px solid var(--sand-dark); border-radius:3px; font-family:'Jost',sans-serif; font-size:12px; letter-spacing:0.08em; font-weight:500; cursor:pointer; }
+    .btn-secondary:hover { border-color:var(--slate); }
+
+    /* NOTICE */
+    .notice { background:var(--slate); border-radius:4px; padding:16px 18px; margin-top:16px; }
+    .notice p { font-size:12px; color:var(--sand-dark); font-weight:300; line-height:1.6; }
+    .notice a { color:var(--sand); }
+
+    /* POINTS INFO */
+    .points-info { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:16px; }
+    .point-card { background:var(--sand); border-radius:4px; padding:14px 12px; text-align:center; }
+    .point-card .num { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:300; color:var(--slate); line-height:1; }
+    .point-card .lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--stone); margin-top:4px; }
+
+    /* INVITE */
+    .link-row { display:flex; gap:8px; }
+    .link-field { flex:1; padding:9px 12px; border:1px solid var(--sand-dark); border-radius:3px; font-size:12px; font-family:'Jost',sans-serif; color:var(--stone); background:var(--sand-light); }
+
+    /* FOOTER */
+    .footer { text-align:center; padding:20px; font-size:11px; color:var(--stone); letter-spacing:0.08em; border-top:1px solid var(--sand-dark); margin-top:8px; }
+    .footer a { color:var(--stone); text-decoration:none; }
+
+    /* LOGIN SCREEN */
+    #login-screen { max-width:440px; margin:60px auto; padding:0 20px; }
+    #login-screen .card { padding:32px; }
+    #login-screen h2 { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:300; color:var(--slate); margin-bottom:6px; }
+    #login-screen p { font-size:13px; color:var(--stone); margin-bottom:20px; font-weight:300; }
+
+    .msg { font-size:12px; margin-top:8px; min-height:18px; }
+    .msg.err { color:#c0392b; }
+    .msg.ok { color:#5a8a5a; }
+
+    .loading { text-align:center; padding:40px; color:var(--stone); font-size:13px; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--stone);">Rosenberger Finanzberatung</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--slate);margin-top:4px;">WM Tippspiel <em style="font-style:italic;opacity:0.7;">2026</em></div>
+  </div>
+
+  <div class="card" id="login-panel">
+    <h2>Anmelden</h2>
+    <p>Bereits registriert? Melde dich mit deiner E-Mail an.</p>
+    <div class="form-row">
+      <label class="form-label">E-Mail</label>
+      <input class="form-input" type="email" id="login-email" placeholder="deine@email.de"/>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Name</label>
+      <input class="form-input" type="text" id="login-name" placeholder="Dein Name"/>
+    </div>
+    <div style="margin-top:4px;margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--stone);display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="has-invite"/> Ich habe einen Einladungscode
+      </label>
+    </div>
+    <div class="form-row" id="invite-row" style="display:none;">
+      <label class="form-label">Einladungscode</label>
+      <input class="form-input" type="text" id="invite-code-input" placeholder="z.B. a3f9b2c1"/>
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="loginOrRegister()">Mitmachen</button>
+    <div class="msg" id="login-msg"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" style="display:none;">
+  <div class="header">
+    <div class="header-brand">Rosenberger Finanzberatung</div>
+    <h1>WM Tippspiel <em>2026</em></h1>
+    <div class="header-meta">Tippe Ergebnisse · Sammel Punkte · Lade Freunde ein</div>
+    <div class="header-user" id="header-user"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('tippen')">Tippen</button>
+    <button class="tab" onclick="showTab('rangliste')">Rangliste</button>
+    <button class="tab" onclick="showTab('einladen')">Einladen</button>
+    <button class="tab" onclick="showTab('konto')">Konto</button>
+  </div>
+
+  <div id="tab-tippen" class="content active">
+    <div class="section-label">Aktuelle Spiele</div>
+    <div id="matches-list"><div class="loading">Spiele werden geladen…</div></div>
+    <div class="points-info">
+      <div class="point-card"><div class="num">3</div><div class="lbl">Exakter Tipp</div></div>
+      <div class="point-card"><div class="num">2</div><div class="lbl">Richtiger Sieger</div></div>
+      <div class="point-card"><div class="num">1</div><div class="lbl">Richtige Tendenz</div></div>
+    </div>
+  </div>
+
+  <div id="tab-rangliste" class="content">
+    <div class="section-label">Gesamtrangliste</div>
+    <div id="ranking-list"><div class="loading">Rangliste wird geladen…</div></div>
+  </div>
+
+  <div id="tab-einladen" class="content">
+    <div class="section-label">Freunde einladen</div>
+    <div class="card">
+      <h3>Dein persönlicher Einladungslink</h3>
+      <p>Teile diesen Link – wer darüber beitritt, spielt in deiner Gruppe mit.</p>
+      <div class="link-row">
+        <input class="link-field" type="text" readonly id="invite-link-field"/>
+        <button class="btn-secondary" onclick="copyInvite()">Kopieren</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <h3>Via WhatsApp teilen</h3>
+      <p>Fertige Nachricht – einfach weiterleiten.</p>
+      <button class="btn-primary" onclick="shareWA()">WhatsApp öffnen</button>
+    </div>
+    <div class="notice"><p>Alle Teilnehmer tippen auf der Plattform von <strong style="color:var(--sand);">Rosenberger Finanzberatung</strong> – dein Branding bleibt immer sichtbar.</p></div>
+  </div>
+
+  <div id="tab-konto" class="content">
+    <div class="section-label">Mein Konto</div>
+    <div class="card" id="konto-info"></div>
+    <div style="margin-top:16px;">
+      <button class="btn-secondary" onclick="logout()">Abmelden</button>
+    </div>
+    <div class="notice" style="margin-top:20px;">
+      <p>Ein Angebot von <strong style="color:var(--sand);">Jonas Rosenberger</strong> · <a href="https://rosenbergerjonas.de" target="_blank">rosenbergerjonas.de</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="footer">© 2026 · <a href="https://rosenbergerjonas.de" target="_blank">Rosenberger Finanzberatung</a></div>
+
+<script>
+const SUPABASE_URL = 'https://bmlynctfdiwcaqcpsusw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_J-a19CK2tHWj6ENg5fTTPg_yY4BBaMs';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentPlayer = null;
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('has-invite').addEventListener('change', e => {
+    document.getElementById('invite-row').style.display = e.target.checked ? 'block' : 'none';
+  });
+  const saved = localStorage.getItem('rosen_player');
+  if (saved) {
+    currentPlayer = JSON.parse(saved);
+    showApp();
+  }
+});
+
+// ── LOGIN / REGISTER ──
+async function loginOrRegister() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const name  = document.getElementById('login-name').value.trim();
+  const invCode = document.getElementById('invite-code-input').value.trim().toLowerCase();
+  const msg   = document.getElementById('login-msg');
+  const btn   = document.getElementById('login-btn');
+
+  if (!email || !name) { msg.className='msg err'; msg.textContent='Bitte Name und E-Mail eingeben.'; return; }
+
+  btn.disabled = true; msg.className='msg'; msg.textContent='Einen Moment…';
+
+  // Check existing
+  const { data: existing } = await sb.from('players').select('*').eq('email', email).single();
+  if (existing) {
+    currentPlayer = existing;
+    localStorage.setItem('rosen_player', JSON.stringify(existing));
+    showApp();
+    return;
+  }
+
+  // Find inviter
+  let invitedBy = null;
+  if (invCode) {
+    const { data: inv } = await sb.from('players').select('id').eq('invite_code', invCode).single();
+    if (inv) invitedBy = inv.id;
+  }
+
+  // Register
+  const { data: newP, error } = await sb.from('players').insert({
+    name, email, invited_by: invitedBy
+  }).select().single();
+
+  btn.disabled = false;
+  if (error) { msg.className='msg err'; msg.textContent='Fehler: '+error.message; return; }
+
+  currentPlayer = newP;
+  localStorage.setItem('rosen_player', JSON.stringify(newP));
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('header-user').textContent = 'Angemeldet als ' + currentPlayer.name;
+  document.getElementById('invite-link-field').value = window.location.origin + window.location.pathname + '?invite=' + currentPlayer.invite_code;
+  loadKonto();
+  loadMatches();
+  loadRanking();
+
+  // Pre-fill invite code from URL
+  const urlInv = new URLSearchParams(window.location.search).get('invite');
+  if (urlInv) document.getElementById('invite-code-input').value = urlInv;
+}
+
+// ── TABS ──
+function showTab(name) {
+  document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'rangliste') loadRanking();
+}
+
+// ── MATCHES ──
+async function loadMatches() {
+  const { data: matches } = await sb.from('matches').select('*').order('match_date');
+  const { data: tips } = await sb.from('tips').select('*').eq('player_id', currentPlayer.id);
+  const tipMap = {};
+  (tips||[]).forEach(t => tipMap[t.match_id] = t);
+
+  const container = document.getElementById('matches-list');
+  if (!matches || matches.length === 0) {
+    container.innerHTML = '<div class="card"><p style="text-align:center;padding:20px 0;">Spiele werden bald eingetragen.</p></div>';
+    return;
+  }
+
+  container.innerHTML = matches.map(m => {
+    const tip = tipMap[m.id];
+    const hVal = tip ? tip.home_tip : '';
+    const aVal = tip ? tip.away_tip : '';
+    const now = new Date();
+    const mDate = new Date(m.match_date);
+    const closed = m.is_finished || mDate < now;
+    const dateStr = mDate.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ' · ' + mDate.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) + ' Uhr';
+
+    return `<div class="card" id="match-${m.id}">
+      <div class="match-header">
+        <span class="match-round">${m.group_name||'Gruppenphase'}</span>
+        <span class="match-date">${dateStr}</span>
+      </div>
+      <div class="match-teams">
+        <div class="team-name">${m.home_team}</div>
+        <div class="vs-box">
+          <input class="score-input" type="number" min="0" max="20" value="${hVal}" id="h-${m.id}" ${closed?'disabled':''} oninput="saveTip(${m.id})"/>
+          <span class="score-sep">:</span>
+          <input class="score-input" type="number" min="0" max="20" value="${aVal}" id="a-${m.id}" ${closed?'disabled':''} oninput="saveTip(${m.id})"/>
+        </div>
+        <div class="team-name right">${m.away_team}</div>
+      </div>
+      ${m.is_finished ? `<div class="match-saved">Ergebnis: ${m.home_score}:${m.away_score}${tip ? ' · '+tip.points+' Pkt.' : ''}</div>` : ''}
+      ${closed && !m.is_finished ? '<div class="match-deadline">Tippabgabe geschlossen</div>' : ''}
+      <div class="match-saved" id="saved-${m.id}"></div>
+    </div>`;
+  }).join('');
+}
+
+let saveTimers = {};
+async function saveTip(matchId) {
+  clearTimeout(saveTimers[matchId]);
+  saveTimers[matchId] = setTimeout(async () => {
+    const h = document.getElementById('h-'+matchId).value;
+    const a = document.getElementById('a-'+matchId).value;
+    if (h === '' || a === '') return;
+    const lbl = document.getElementById('saved-'+matchId);
+    lbl.className = 'match-saved'; lbl.textContent = 'Wird gespeichert…';
+
+    const { error } = await sb.from('tips').upsert({
+      player_id: currentPlayer.id,
+      match_id: matchId,
+      home_tip: parseInt(h),
+      away_tip: parseInt(a),
+      points: 0
+    }, { onConflict: 'player_id,match_id' });
+
+    if (error) { lbl.className='match-saved err'; lbl.textContent='Fehler beim Speichern'; }
+    else { lbl.className='match-saved ok'; lbl.textContent='Gespeichert ✓'; }
+  }, 800);
+}
+
+// ── RANGLISTE ──
+async function loadRanking() {
+  const { data: players } = await sb.from('players').select('id, name');
+  const { data: tips } = await sb.from('tips').select('player_id, points');
+
+  const pts = {};
+  (tips||[]).forEach(t => { pts[t.player_id] = (pts[t.player_id]||0) + (t.points||0); });
+
+  const ranked = (players||[])
+    .map(p => ({ ...p, points: pts[p.id]||0 }))
+    .sort((a,b) => b.points - a.points);
+
+  const container = document.getElementById('ranking-list');
+  if (ranked.length === 0) { container.innerHTML='<div class="card"><p>Noch keine Teilnehmer.</p></div>'; return; }
+
+  container.innerHTML = ranked.map((p,i) => `
+    <div class="ranking-row ${p.id===currentPlayer.id?'you':''}">
+      <div class="rank-num">${i+1}</div>
+      <div class="rank-name">${p.id===currentPlayer.id ? p.name+' (Du)' : p.name}</div>
+      <div class="rank-pts">${p.points} <span style="font-size:11px;opacity:0.6;">Pkt.</span></div>
+    </div>`).join('');
+}
+
+// ── KONTO ──
+function loadKonto() {
+  document.getElementById('konto-info').innerHTML = `
+    <h3>${currentPlayer.name}</h3>
+    <p style="margin-top:8px;">${currentPlayer.email}</p>
+    <p style="margin-top:4px;font-size:11px;color:var(--stone);">Einladungscode: <strong style="color:var(--slate);">${currentPlayer.invite_code}</strong></p>
+    <p style="margin-top:4px;font-size:11px;color:var(--stone);">Dabei seit: ${new Date(currentPlayer.created_at).toLocaleDateString('de-DE')}</p>`;
+}
+
+// ── EINLADEN ──
+function copyInvite() {
+  navigator.clipboard.writeText(document.getElementById('invite-link-field').value);
+  alert('Link kopiert!');
+}
+function shareWA() {
+  const link = document.getElementById('invite-link-field').value;
+  const text = encodeURIComponent(`Hey! 🏆 Ich tippe beim WM Tippspiel von Rosenberger Finanzberatung mit – mach mit!\n\n${link}`);
+  window.open('https://wa.me/?text='+text, '_blank');
+}
+
+function logout() {
+  localStorage.removeItem('rosen_player');
+  location.reload();
+}
+</script>
+</body>
+</html>
